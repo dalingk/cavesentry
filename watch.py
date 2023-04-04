@@ -3,25 +3,18 @@ import argparse
 from dataclasses import dataclass
 import hashlib
 import logging
+import json
 import typing
+import os
 import requests
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-logger.addHandler(logging.StreamHandler())
 
 
 @dataclass
 class CompareSpecification:
     etag: typing.Optional[str] = None
     sha512: typing.Optional[str] = None
-
-    # def __dict__(self):
-    #     return {
-    #         key: value
-    #         for key, value in [("etag", self.etag), ("sha512", self.sha512)]
-    #         if value
-    #     }
 
     def __call__(self, response: requests.Response):
         response.raise_for_status()
@@ -40,46 +33,55 @@ class MonitoredPage:
     href: str
     compare: CompareSpecification
 
-    # def __dict__(self):
-    #     return dict(name=self.name, href=self.href, compare=self.compare)
+    def monitor(self):
+        response = requests.get(self.href)
+        return self.compare(response)
 
     @classmethod
-    def from_json(json):
-        return __class__(
-            json["name"], json["href"], CompareSpecification(*json["compare"])
-        )
-
-
-PAGES = [
-    MonitoredPage(
-        "curl",
-        "https://curl.se/docs/security.html",
-        CompareSpecification(etag='"abf1-5f7917bea1fed-gzip"'),
-    ),
-    MonitoredPage(
-        "OpenSSL",
-        "https://www.openssl.org/news/vulnerabilities.html",
-        CompareSpecification(
-            sha512=(
-                "d5c025ff8877614dbb89194f7318c392",
-                "267e7a57e7b3c7cc235464f324b6cc3c",
-                "bdabe1b6a6fc1eb4836350efbf4f582c",
-                "34399c9bb8c2465c5ba9fb9ee01b1994",
-            ),
-        ),
-    ),
-]
+    def from_json(cls, json):
+        return cls(json["name"], json["href"], CompareSpecification(**json["compare"]))
 
 
 def create_parser():
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--json-database",
+        help="JSON file to load webpage database from",
+        type=argparse.FileType("r"),
+        default=os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "examples", "pages.json"
+        ),
+    )
+    parser.add_argument(
+        "--log-level",
+        choices=(
+            logging.DEBUG,
+            logging.INFO,
+            logging.WARNING,
+            logging.ERROR,
+            logging.CRITICAL,
+        ),
+        default=logging.INFO,
+        help="Logging level chosen from Python's logging module",
+        type=int,
+    )
+    return parser
 
 
 def main():
-    for page_spec in PAGES:
-        response = requests.get(page_spec.href)
-        if not page_spec.compare(response):
-            print(f"Page for {page_spec.name} did not pass comparison.")
+    parser = create_parser()
+    args = parser.parse_args()
+
+    logger.setLevel(args.log_level)
+    logger.addHandler(logging.StreamHandler())
+
+    PAGES = [MonitoredPage.from_json(x) for x in json.load(args.json_database)]
+    for page in PAGES:
+        logger.debug("Processing %s", page.name)
+        if not page.monitor():
+            print(f"---- {page.name} ----")
+            print(f"Page for {page.name} does not matched saved state.")
+            print(f"Check {page.href} for changes.")
 
 
 if __name__ == "__main__":

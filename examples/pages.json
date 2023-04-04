@@ -1,0 +1,23 @@
+[
+    {
+        "name": "curl",
+        "href": "https://curl.se/docs/security.html",
+        "compare": {
+            "etag": "\"abf1-5f7917bea1fed-gzip\""
+        }
+    },
+    {
+        "name": "OpenSSL",
+        "href": "https://www.openssl.org/news/vulnerabilities.html",
+        "compare": {
+            "sha512": "d5c025ff8877614dbb89194f7318c392267e7a57e7b3c7cc235464f324b6cc3cbdabe1b6a6fc1eb4836350efbf4f582c34399c9bb8c2465c5ba9fb9ee01b1994"
+        }
+    },
+    {
+        "name": "sudo",
+        "href": "https://www.sudo.ws/security/advisories/",
+        "compare": {
+            "sha512": "15762262fa261cb0db5b2fdf4be185e44ed2d8e5b6922ce2e2ab2bf4e023f4b441785d1f62510f7754d7e4b453a3e11a34a855476a3af9b153d6c0c00d82a740"
+        }
+    }
+]
